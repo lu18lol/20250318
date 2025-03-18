@@ -1,0 +1,444 @@
+{% extends "base.html" %}
+
+{% block title %}{{ exam.title }} - 答题{% endblock %}
+
+{% block extra_head %}
+<style>
+    .question-nav-item.active {
+        background-color: #3B82F6;
+        color: white;
+    }
+    .question-nav-item.answered {
+        background-color: #10B981;
+        color: white;
+    }
+    .question-nav-item.current {
+        border: 2px solid #3B82F6;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container mx-auto px-4">
+    <div class="mb-6">
+        <h1 class="text-3xl font-bold">{{ exam.title }}</h1>
+        {% if exam.time_limit %}
+        <div class="mt-2 text-lg font-medium text-red-600" id="timer">
+            剩余时间: <span id="minutes">{{ exam.time_limit }}</span>:<span id="seconds">00</span>
+        </div>
+        {% endif %}
+    </div>
+    
+    <div class="grid grid-cols-1 lg:grid-cols-4 gap-6">
+        <!-- 左侧题目导航 -->
+        <div class="lg:col-span-1">
+            <div class="bg-white rounded-lg shadow-md p-4 sticky top-4">
+                <h2 class="text-lg font-semibold mb-4">题目导航</h2>
+                <div class="grid grid-cols-5 gap-2">
+                    {% for eq in exam_questions %}
+                    <button 
+                        class="question-nav-item w-10 h-10 rounded-full flex items-center justify-center text-sm border {% if forloop.first %}active current{% endif %}" 
+                        data-question-index="{{ forloop.counter0 }}">
+                        {{ forloop.counter }}
+                    </button>
+                    {% endfor %}
+                </div>
+                
+                <div class="mt-6 flex justify-between items-center">
+                    <button id="prev-btn" class="px-4 py-2 bg-gray-200 text-gray-700 rounded disabled:opacity-50" disabled>
+                        上一题
+                    </button>
+                    <button id="next-btn" class="px-4 py-2 bg-blue-600 text-white rounded">
+                        下一题
+                    </button>
+                </div>
+                
+                <div class="mt-6">
+                    <button id="submit-btn" class="w-full px-4 py-2 bg-green-600 text-white rounded">
+                        提交答案
+                    </button>
+                </div>
+            </div>
+        </div>
+        
+        <!-- 右侧题目内容 -->
+        <div class="lg:col-span-3">
+            <div class="bg-white rounded-lg shadow-md p-6">
+                <form id="exam-form">
+                    {% csrf_token %}
+                    {% for eq in exam_questions %}
+                    <div class="question-container {% if not forloop.first %}hidden{% endif %}" data-question-index="{{ forloop.counter0 }}">
+                        <div class="mb-4 flex justify-between items-center">
+                            <h3 class="text-xl font-semibold">第 {{ forloop.counter }} 题</h3>
+                            <span class="px-2 py-1 text-xs rounded {% if eq.question.type == 'single' %}bg-blue-100 text-blue-800{% elif eq.question.type == 'multiple' %}bg-green-100 text-green-800{% elif eq.question.type == 'truefalse' %}bg-yellow-100 text-yellow-800{% else %}bg-purple-100 text-purple-800{% endif %}">
+                                {{ eq.question.get_type_display }}
+                            </span>
+                        </div>
+                        
+                        <div class="mb-6">
+                            <p class="text-lg">{{ eq.question.content }}</p>
+                        </div>
+                        
+                        <input type="hidden" name="question_id" value="{{ eq.question.id }}">
+                        
+                        {% if eq.question.type == 'single' %}
+                            <div class="space-y-3">
+                                {% for option in eq.question.options.all %}
+                                <label class="flex items-start p-3 border rounded hover:bg-gray-50 cursor-pointer">
+                                    <input 
+                                        type="radio" 
+                                        name="selected_options_{{ eq.question.id }}" 
+                                        value="{{ option.id }}" 
+                                        class="mt-1 mr-3 option-input"
+                                        data-question-index="{{ forloop.parentloop.counter0 }}">
+                                    <span>{{ option.content }}</span>
+                                </label>
+                                {% endfor %}
+                            </div>
+                        {% elif eq.question.type == 'multiple' %}
+                            <div class="space-y-3">
+                                {% for option in eq.question.options.all %}
+                                <label class="flex items-start p-3 border rounded hover:bg-gray-50 cursor-pointer">
+                                    <input 
+                                        type="checkbox" 
+                                        name="selected_options_{{ eq.question.id }}" 
+                                        value="{{ option.id }}" 
+                                        class="mt-1 mr-3 option-input"
+                                        data-question-index="{{ forloop.parentloop.counter0 }}">
+                                    <span>{{ option.content }}</span>
+                                </label>
+                                {% endfor %}
+                            </div>
+                        {% elif eq.question.type == 'truefalse' %}
+                            <div class="space-y-3">
+                                <label class="flex items-start p-3 border rounded hover:bg-gray-50 cursor-pointer">
+                                    <input 
+                                        type="radio" 
+                                        name="selected_{{ eq.question.id }}" 
+                                        value="true" 
+                                        class="mt-1 mr-3 option-input"
+                                        data-question-index="{{ forloop.counter0 }}">
+                                    <span>是</span>
+                                </label>
+                                <label class="flex items-start p-3 border rounded hover:bg-gray-50 cursor-pointer">
+                                    <input 
+                                        type="radio" 
+                                        name="selected_{{ eq.question.id }}" 
+                                        value="false" 
+                                        class="mt-1 mr-3 option-input"
+                                        data-question-index="{{ forloop.counter0 }}">
+                                    <span>否</span>
+                                </label>
+                            </div>
+                        {% elif eq.question.type == 'essay' %}
+                            <div>
+                                <textarea 
+                                    name="text_answer_{{ eq.question.id }}" 
+                                    rows="6" 
+                                    class="w-full p-3 border rounded essay-input"
+                                    data-question-index="{{ forloop.counter0 }}"
+                                    placeholder="请在此输入您的答案..."></textarea>
+                            </div>
+                        {% endif %}
+                    </div>
+                    {% endfor %}
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 提交确认对话框 -->
+<div id="submit-modal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center hidden z-50">
+    <div class="bg-white rounded-lg p-6 max-w-md w-full">
+        <h3 class="text-xl font-semibold mb-4">确认提交</h3>
+        <p class="mb-6">您确定要提交答案吗？提交后将无法修改。</p>
+        <div id="unanswered-warning" class="mb-4 text-red-600 hidden">
+            <p>您还有 <span id="unanswered-count">0</span> 题未作答，确定要提交吗？</p>
+        </div>
+        <div class="flex justify-end space-x-4">
+            <button class="px-4 py-2 border rounded">取消</button>
+            <button class="px-4 py-2 bg-blue-600 text-white rounded">确认提交</button>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener("DOMContentLoaded", function() {
+    console.log("答题页面JavaScript已加载");
+    
+    // 全局变量
+    let currentQuestionIndex = 0;
+    let totalQuestions = document.querySelectorAll('.question-container').length;
+    let answeredQuestions = new Set();
+    
+    // 定义主要DOM元素
+    const prevBtn = document.getElementById('prev-btn');
+    const nextBtn = document.getElementById('next-btn');
+    const submitBtn = document.getElementById('submit-btn');
+    const timerElement = document.getElementById('timer');
+    const minutesElement = document.getElementById('minutes');
+    const secondsElement = document.getElementById('seconds');
+    const submitModal = document.getElementById('submit-modal');
+    const unansweredCount = document.getElementById('unanswered-count');
+    const unansweredWarning = document.getElementById('unanswered-warning');
+    const navItems = document.querySelectorAll('.question-nav-item');
+    const questionContainers = document.querySelectorAll('.question-container');
+    const optionInputs = document.querySelectorAll('.option-input');
+    const essayInputs = document.querySelectorAll('.essay-input');
+    
+    // 计时器相关变量
+    let timeLimit = minutesElement ? parseInt(minutesElement.textContent) : 0;
+    let timeLeft = timeLimit * 60; // 转换为秒
+    let timerInterval = null;
+    
+    // 函数: 显示特定题目
+    function showQuestion(index) {
+        console.log("切换到题目:", index);
+        if (index < 0 || index >= totalQuestions) {
+            console.log("题目索引越界:", index);
+            return;
+        }
+        
+        // 隐藏所有题目
+        questionContainers.forEach(q => q.classList.add('hidden'));
+        
+        // 显示当前题目
+        questionContainers[index].classList.remove('hidden');
+        
+        // 更新导航按钮状态
+        navItems.forEach(item => item.classList.remove('current'));
+        navItems[index].classList.add('current');
+        
+        // 更新上一题/下一题按钮状态
+        if (prevBtn) prevBtn.disabled = (index === 0);
+        if (nextBtn) nextBtn.textContent = (index === totalQuestions - 1) ? '完成' : '下一题';
+        
+        // 更新当前题目索引
+        currentQuestionIndex = index;
+    }
+    
+    // 函数: 上一题
+    function prevQuestion() {
+        console.log("点击了上一题按钮");
+        if (currentQuestionIndex > 0) {
+            showQuestion(currentQuestionIndex - 1);
+        }
+    }
+    
+    // 函数: 下一题
+    function nextQuestion() {
+        console.log("点击了下一题按钮");
+        if (currentQuestionIndex < totalQuestions - 1) {
+            showQuestion(currentQuestionIndex + 1);
+        } else {
+            confirmSubmit();
+        }
+    }
+    
+    // 函数: 标记题目已作答
+    function markAnswered(index) {
+        console.log("标记题目已作答:", index);
+        answeredQuestions.add(index);
+        navItems[index].classList.add('answered');
+    }
+    
+    // 函数: 确认提交
+    function confirmSubmit() {
+        console.log("打开确认提交对话框");
+        const notAnsweredCount = totalQuestions - answeredQuestions.size;
+        
+        if (notAnsweredCount > 0) {
+            unansweredCount.textContent = notAnsweredCount;
+            unansweredWarning.classList.remove('hidden');
+        } else {
+            unansweredWarning.classList.add('hidden');
+        }
+        
+        submitModal.classList.remove('hidden');
+    }
+    
+    // 函数: 关闭提交对话框
+    function closeSubmitModal() {
+        console.log("关闭确认提交对话框");
+        submitModal.classList.add('hidden');
+    }
+    
+    // 函数: 更新计时器
+    function updateTimer() {
+        if (!minutesElement || !secondsElement) return;
+        
+        console.log("更新计时器, 剩余时间:", timeLeft);
+        
+        if (timeLeft <= 0) {
+            clearInterval(timerInterval);
+            submitExam();
+            return;
+        }
+        
+        const minutes = Math.floor(timeLeft / 60);
+        const seconds = timeLeft % 60;
+        
+        minutesElement.textContent = minutes.toString().padStart(2, '0');
+        secondsElement.textContent = seconds.toString().padStart(2, '0');
+        
+        if (timeLeft <= 300 && timerElement) { // 剩余5分钟
+            timerElement.classList.add('animate-pulse');
+        }
+        
+        timeLeft--;
+    }
+    
+    // 函数: 启动计时器
+    function startTimer() {
+        if (timeLimit > 0) {
+            console.log("启动计时器, 时间限制:", timeLimit, "分钟");
+            timerInterval = setInterval(updateTimer, 1000);
+            updateTimer();
+        }
+    }
+    
+    // 函数: 提交测试
+    function submitExam() {
+        console.log("提交考试答案");
+        
+        // 关闭提交对话框
+        submitModal.classList.add('hidden');
+        
+        // 收集所有答案
+        const answers = [];
+        
+        questionContainers.forEach((container, index) => {
+            try {
+                const questionId = container.querySelector('input[name="question_id"]').value;
+                const optionsInputs = container.querySelectorAll('input[type="radio"]:checked, input[type="checkbox"]:checked');
+                const essayInput = container.querySelector('textarea');
+                
+                let answerData = {
+                    question_id: questionId
+                };
+                
+                // 根据input类型判断题目类型
+                if (optionsInputs.length > 0) {
+                    // 单选或多选
+                    if (optionsInputs[0].name.includes('selected_options_')) {
+                        const selectedOptions = [];
+                        optionsInputs.forEach(option => {
+                            selectedOptions.push(option.value);
+                        });
+                        answerData.selected_options = selectedOptions;
+                    } 
+                    // 判断题
+                    else if (optionsInputs[0].name.includes('selected_')) {
+                        answerData.selected = optionsInputs[0].value === 'true';
+                    }
+                } 
+                // 问答题
+                else if (essayInput) {
+                    answerData.text_answer = essayInput.value || '';
+                }
+                
+                answers.push(answerData);
+            } catch (e) {
+                console.error("处理答案时出错:", e);
+            }
+        });
+        
+        console.log("提交的答案:", answers);
+        
+        const submissionId = window.location.pathname.split('/')[2];
+        const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]')?.value || '';
+        
+        // 发送API请求
+        fetch('/submissions/' + submissionId + '/submit/', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': '{{ csrf_token }}'
+            },
+            body: JSON.stringify(answers)
+        })
+        .then(response => {
+            if (!response.ok) {
+                throw new Error('Network response was not ok');
+            }
+            return response.json();
+        })
+        .then(data => {
+            console.log("提交响应:", data);
+            if (data.success) {
+                window.location.href = `/submissions/${submissionId}/result/`;
+            } else {
+                alert('提交失败: ' + (data.error || '未知错误'));
+            }
+        })
+        .catch(error => {
+            console.error('提交错误:', error);
+            alert('提交失败，请重试');
+        });
+    }
+    
+    // 绑定按钮事件
+    if (prevBtn) prevBtn.addEventListener('click', function(e) {
+        e.preventDefault();
+        prevQuestion();
+    });
+    
+    if (nextBtn) nextBtn.addEventListener('click', function(e) {
+        e.preventDefault();
+        nextQuestion();
+    });
+    
+    if (submitBtn) submitBtn.addEventListener('click', function(e) {
+        e.preventDefault();
+        confirmSubmit();
+    });
+    
+    // 绑定题目导航事件
+    navItems.forEach((item, index) => {
+        item.addEventListener('click', function() {
+            showQuestion(index);
+        });
+    });
+    
+    // 绑定选项变更事件
+    optionInputs.forEach(input => {
+        input.addEventListener('change', function() {
+            const questionIndex = parseInt(this.getAttribute('data-question-index'));
+            markAnswered(questionIndex);
+        });
+    });
+    
+    // 绑定问答题文本框事件
+    essayInputs.forEach(textarea => {
+        textarea.addEventListener('input', function() {
+            const questionIndex = parseInt(this.getAttribute('data-question-index'));
+            markAnswered(questionIndex);
+        });
+    });
+    
+    // 绑定确认对话框按钮
+    document.querySelectorAll('#submit-modal button').forEach(btn => {
+        if (btn.textContent.trim() === '取消') {
+            btn.addEventListener('click', function(e) {
+                e.preventDefault();
+                closeSubmitModal();
+            });
+        } else if (btn.textContent.trim() === '确认提交') {
+            btn.addEventListener('click', function(e) {
+                e.preventDefault();
+                submitExam();
+            });
+        }
+    });
+    
+    // 初始化显示第一题
+    showQuestion(0);
+    
+    // 启动计时器(如果有时间限制)
+    startTimer();
+});
+</script>
+{% endblock %} 

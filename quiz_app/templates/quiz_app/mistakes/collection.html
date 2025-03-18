@@ -1,0 +1,97 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}错题集{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <h2 class="mb-4">我的错题集</h2>
+    
+    {% if mistakes %}
+        <div class="row">
+            {% for mistake in mistakes %}
+            <div class="col-md-12 mb-3">
+                <div class="card">
+                    <div class="card-body">
+                        <h5 class="card-title">{{ mistake.question.title }}</h5>
+                        <p class="card-text">{{ mistake.question.content }}</p>
+                        
+                        <div class="mb-3">
+                            <strong>题目类型：</strong> {{ mistake.question.get_type_display }}
+                            <strong class="ml-3">难度：</strong> {{ mistake.question.get_difficulty_display }}
+                            <strong class="ml-3">分类：</strong> {{ mistake.question.category.name }}
+                        </div>
+                        
+                        {% if mistake.question.type == 'single_choice' or mistake.question.type == 'multiple_choice' %}
+                        <div class="options mb-3">
+                            {% for option in mistake.question.options.all %}
+                            <div class="form-check">
+                                <input class="form-check-input" type="{% if mistake.question.type == 'single_choice' %}radio{% else %}checkbox{% endif %}" 
+                                       name="question_{{ mistake.question.id }}" 
+                                       value="{{ option.id }}" 
+                                       {% if option.is_correct %}checked{% endif %} 
+                                       disabled>
+                                <label class="form-check-label">{{ option.content }}</label>
+                            </div>
+                            {% endfor %}
+                        </div>
+                        {% endif %}
+                        
+                        <div class="answer-section">
+                            <strong>正确答案：</strong>
+                            <p>{{ mistake.question.correct_answer }}</p>
+                        </div>
+                        
+                        {% if mistake.user_answer %}
+                        <div class="user-answer mt-2">
+                            <strong>你的答案：</strong>
+                            <p>{{ mistake.user_answer }}</p>
+                        </div>
+                        {% endif %}
+                        
+                        {% if mistake.question.explanation %}
+                        <div class="explanation mt-3">
+                            <strong>解析：</strong>
+                            <p>{{ mistake.question.explanation }}</p>
+                        </div>
+                        {% endif %}
+                        
+                        <div class="text-muted mt-2">
+                            <small>添加时间：{{ mistake.created_at|date:"Y-m-d H:i" }}</small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+        
+        <nav aria-label="Page navigation" class="mt-4">
+            <ul class="pagination justify-content-center">
+                {% if mistakes.has_previous %}
+                <li class="page-item">
+                    <a class="page-link" href="?page={{ mistakes.previous_page_number }}">&laquo; 上一页</a>
+                </li>
+                {% endif %}
+                
+                <li class="page-item disabled">
+                    <span class="page-link">第 {{ mistakes.number }} 页，共 {{ mistakes.paginator.num_pages }} 页</span>
+                </li>
+                
+                {% if mistakes.has_next %}
+                <li class="page-item">
+                    <a class="page-link" href="?page={{ mistakes.next_page_number }}">下一页 &raquo;</a>
+                </li>
+                {% endif %}
+            </ul>
+        </nav>
+    {% else %}
+        <div class="alert alert-info">
+            你还没有添加任何错题。在做题过程中，系统会自动收集你做错的题目。
+        </div>
+    {% endif %}
+    
+    <div class="text-center mt-4">
+        <a href="{% url 'mistake_analysis' %}" class="btn btn-primary">查看错题分析</a>
+    </div>
+</div>
+{% endblock %} 

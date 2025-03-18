@@ -1,0 +1,31 @@
+{% extends "base.html" %}
+
+{% block title %}需要登录 - 答题系统{% endblock %}
+
+{% block content %}
+<div class="container mx-auto px-4 py-16 text-center">
+    <div class="bg-white rounded-lg shadow-md p-8 max-w-2xl mx-auto">
+        <div class="mb-6">
+            <svg class="w-16 h-16 text-red-500 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path>
+            </svg>
+        </div>
+        
+        <h1 class="text-2xl font-bold text-gray-800 mb-4">需要登录</h1>
+        
+        <p class="text-gray-600 mb-6">
+            您尝试访问的页面需要登录后才能查看。请先登录您的账户，然后再尝试访问此页面。
+        </p>
+        
+        <div class="mt-8">
+            <a href="{% url 'login' %}?next={{ request.path }}" class="bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-6 rounded-md transition duration-300">
+                前往登录
+            </a>
+        </div>
+        
+        <div class="mt-4 text-sm text-gray-500">
+            没有账户？请联系管理员创建账户。
+        </div>
+    </div>
+</div>
+{% endblock %} 

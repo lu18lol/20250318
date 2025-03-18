@@ -1,0 +1,310 @@
+{% extends "base.html" %}
+
+{% block title %}测试结果{% endblock %}
+
+{% block extra_head %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+{% endblock %}
+
+{% block content %}
+<div class="container mx-auto px-4 py-8">
+    <div class="mb-8">
+        <h1 class="text-3xl font-bold mb-2">{{ submission.exam.title }} - 测试结果</h1>
+        <p class="text-gray-600">完成时间: {{ submission.end_time|date:"Y-m-d H:i:s" }}</p>
+    </div>
+    
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+        <!-- 成绩卡片 -->
+        <div class="bg-white rounded-lg shadow-md p-6">
+            <h2 class="text-xl font-semibold mb-4">总成绩</h2>
+            <div class="flex items-center justify-center">
+                <div class="relative w-40 h-40">
+                    <canvas id="scoreChart"></canvas>
+                    <div class="absolute inset-0 flex items-center justify-center">
+                        <span class="text-3xl font-bold">{{ submission.total_score|floatformat:1 }}</span>
+                    </div>
+                </div>
+            </div>
+            <div class="mt-4 text-center">
+                <p class="text-lg">
+                    {% if submission.total_score >= submission.exam.passing_score %}
+                    <span class="text-green-600 font-semibold">通过</span>
+                    {% else %}
+                    <span class="text-red-600 font-semibold">未通过</span>
+                    {% endif %}
+                </p>
+                <p class="text-sm text-gray-600">及格分数: {{ submission.exam.passing_score }}</p>
+            </div>
+        </div>
+        
+        <!-- 错题统计 -->
+        <div class="bg-white rounded-lg shadow-md p-6">
+            <h2 class="text-xl font-semibold mb-4">错题统计</h2>
+            <div class="flex items-center justify-center">
+                <div class="w-full h-40">
+                    <canvas id="wrongChart"></canvas>
+                </div>
+            </div>
+            <div class="mt-4 text-center">
+                <p class="text-lg">
+                    正确率: <span class="font-semibold">{{ 100|add:"-"|add:wrong_percentage|floatformat:1 }}%</span>
+                </p>
+                <p class="text-sm text-gray-600">
+                    {{ total_count|add:"-"|add:wrong_count }}/{{ total_count }} 题正确
+                </p>
+            </div>
+        </div>
+        
+        <!-- 题型分布 -->
+        <div class="bg-white rounded-lg shadow-md p-6">
+            <h2 class="text-xl font-semibold mb-4">题型错误分布</h2>
+            <div class="w-full h-40">
+                <canvas id="typeChart"></canvas>
+            </div>
+            <div class="mt-4">
+                <ul class="space-y-2">
+                    {% for type, stats in wrong_by_type.items %}
+                    <li class="flex justify-between">
+                        <span>{{ type }}:</span>
+                        <span>{{ stats.wrong }}/{{ stats.total }} 错误 ({{ stats.percentage|floatformat:1 }}%)</span>
+                    </li>
+                    {% endfor %}
+                </ul>
+            </div>
+        </div>
+    </div>
+    
+    {% if feedback %}
+    <div class="bg-white rounded-lg shadow-md p-6 mb-8">
+        <h2 class="text-xl font-semibold mb-4">测试反馈</h2>
+        <div class="flex flex-col md:flex-row items-center">
+            {% if feedback.image %}
+            <div class="md:w-1/4 mb-4 md:mb-0 md:mr-6">
+                <img src="{{ feedback.image.url }}" alt="反馈图片" class="rounded-lg">
+            </div>
+            {% endif %}
+            <div class="md:flex-1">
+                <p class="text-lg">{{ feedback.message }}</p>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+    
+    <!-- 错题分析 -->
+    {% if wrong_count > 0 %}
+    <div class="bg-white rounded-lg shadow-md mb-8">
+        <div class="p-4 border-b">
+            <h2 class="text-xl font-semibold">错题分析</h2>
+        </div>
+        
+        <div class="p-4">
+            {% if wrong_by_category %}
+            <div class="mb-6">
+                <h3 class="text-lg font-medium mb-3">按分类统计</h3>
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    {% for category, count in wrong_by_category.items %}
+                    <div class="bg-gray-50 p-3 rounded">
+                        <div class="flex justify-between items-center">
+                            <span class="font-medium">{{ category }}</span>
+                            <span class="text-red-600">{{ count }} 题错误</span>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+            {% endif %}
+            
+            <h3 class="text-lg font-medium mb-3">错题详情</h3>
+            <div class="space-y-6">
+                {% for answer in answers %}
+                {% if not answer.is_correct %}
+                <div class="border rounded-lg p-4 bg-red-50">
+                    <div class="flex justify-between items-start mb-3">
+                        <div>
+                            <span class="px-2 py-1 text-xs rounded {% if answer.question.type == 'single' %}bg-blue-100 text-blue-800{% elif answer.question.type == 'multiple' %}bg-green-100 text-green-800{% elif answer.question.type == 'truefalse' %}bg-yellow-100 text-yellow-800{% else %}bg-purple-100 text-purple-800{% endif %}">
+                                {{ answer.question.get_type_display }}
+                            </span>
+                            
+                            {% for category in answer.question.categories.all %}
+                            <span class="ml-2 px-2 py-1 text-xs bg-gray-100 text-gray-800 rounded">
+                                {{ category.name }}
+                            </span>
+                            {% endfor %}
+                        </div>
+                        <span class="text-red-600 font-medium">得分: {{ answer.score|floatformat:1 }}</span>
+                    </div>
+                    
+                    <h4 class="text-lg font-medium mb-3">{{ answer.question.content }}</h4>
+                    
+                    {% if answer.question.type == 'single' or answer.question.type == 'multiple' %}
+                        <div class="ml-4 mb-3">
+                            <p class="text-sm text-gray-600 mb-1">正确答案:</p>
+                            <ul class="list-disc ml-5">
+                                {% for option in answer.question.options.all %}
+                                    {% if option.is_correct %}
+                                    <li class="text-green-600">{{ option.content }}</li>
+                                    {% endif %}
+                                {% endfor %}
+                            </ul>
+                            
+                            <p class="text-sm text-gray-600 mt-2 mb-1">你的答案:</p>
+                            <ul class="list-disc ml-5">
+                                {% for option in answer.selected_options.all %}
+                                <li class="{% if option.is_correct %}text-green-600{% else %}text-red-600{% endif %}">
+                                    {{ option.content }}
+                                </li>
+                                {% empty %}
+                                <li class="text-red-600">未选择</li>
+                                {% endfor %}
+                            </ul>
+                        </div>
+                    {% elif answer.question.type == 'truefalse' %}
+                        <div class="ml-4 mb-3">
+                            <p class="text-sm text-gray-600 mb-1">正确答案: 
+                                <span class="text-green-600">
+                                    {% if answer.question.options.all.0.is_correct %}是{% else %}否{% endif %}
+                                </span>
+                            </p>
+                            <p class="text-sm text-gray-600 mb-1">你的答案: 
+                                <span class="text-red-600">{{ answer.text_answer }}</span>
+                            </p>
+                        </div>
+                    {% elif answer.question.type == 'essay' %}
+                        <div class="ml-4 mb-3">
+                            <p class="text-sm text-gray-600 mb-1">你的答案:</p>
+                            <div class="p-2 bg-gray-50 rounded border">
+                                {{ answer.text_answer|linebreaks }}
+                            </div>
+                        </div>
+                    {% endif %}
+                    
+                    {% if answer.question.explanation %}
+                    <div class="mt-3 p-3 bg-yellow-50 rounded-lg">
+                        <p class="text-sm font-medium text-yellow-800">解析:</p>
+                        <p class="text-sm text-yellow-700">{{ answer.question.explanation }}</p>
+                    </div>
+                    {% endif %}
+                </div>
+                {% endif %}
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+    {% endif %}
+    
+    <div class="flex justify-between">
+        <a href="{% url 'exam_list' %}" class="bg-blue-600 hover:bg-blue-700 text-white py-2 px-4 rounded">
+            返回测试列表
+        </a>
+        
+        {% if wrong_count > 0 %}
+        <a href="{% url 'mistake_collection' %}" class="bg-green-600 hover:bg-green-700 text-white py-2 px-4 rounded">
+            查看我的错题集
+        </a>
+        {% endif %}
+    </div>
+</div>
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    var passingScore = {{ submission.exam.passing_score }};
+    var totalScore = {{ submission.total_score }};
+    var isPassed = totalScore >= passingScore;
+    
+    // 根据通过情况显示不同的弹窗
+    Swal.fire({
+        title: isPassed ? '恭喜!' : '未通过',
+        text: isPassed ? '您已成功通过测试!' : '很遗憾，您未能通过测试，请查看错题分析进行复习',
+        icon: isPassed ? 'success' : 'error',
+        confirmButtonText: isPassed ? '太棒了' : '我知道了',
+        confirmButtonColor: isPassed ? '#10B981' : '#EF4444'
+    });
+    
+    // 成绩图表
+    var scoreChart = new Chart(document.getElementById('scoreChart'), {
+        type: 'doughnut',
+        data: {
+            datasets: [{
+                data: [totalScore, 100 - totalScore],
+                backgroundColor: [
+                    isPassed ? '#10B981' : '#EF4444',
+                    '#E5E7EB'
+                ],
+                borderWidth: 0
+            }]
+        },
+        options: {
+            cutout: '70%',
+            plugins: {
+                legend: {
+                    display: false
+                }
+            }
+        }
+    });
+    
+    // 错题统计图表
+    new Chart(document.getElementById('wrongChart'), {
+        type: 'doughnut',
+        data: {
+            labels: ['正确', '错误'],
+            datasets: [{
+                data: [
+                    {{ total_count|add:"-"|add:wrong_count }},
+                    {{ wrong_count }}
+                ],
+                backgroundColor: ['#10B981', '#EF4444'],
+                borderWidth: 0
+            }]
+        },
+        options: {
+            cutout: '70%',
+            plugins: {
+                legend: {
+                    display: false
+                }
+            }
+        }
+    });
+    
+    // 题型分布图表
+    new Chart(document.getElementById('typeChart'), {
+        type: 'bar',
+        data: {
+            labels: [
+                {% for type, stats in wrong_by_type.items %}
+                '{{ type }}'{% if not forloop.last %},{% endif %}
+                {% endfor %}
+            ],
+            datasets: [{
+                label: '错误率 (%)',
+                data: [
+                    {% for type, stats in wrong_by_type.items %}
+                    {{ stats.percentage|floatformat:1 }}{% if not forloop.last %},{% endif %}
+                    {% endfor %}
+                ],
+                backgroundColor: '#3B82F6',
+                borderWidth: 0
+            }]
+        },
+        options: {
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    max: 100
+                }
+            },
+            plugins: {
+                legend: {
+                    display: false
+                }
+            }
+        }
+    });
+});
+</script>
+{% endblock %}
+
+{% endblock %} 

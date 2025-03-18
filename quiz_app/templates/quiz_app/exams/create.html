@@ -1,0 +1,219 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}创建测试{% endblock %}
+
+{% block content %}
+<div class="container mx-auto px-4 py-8">
+    <h1 class="text-2xl font-bold mb-6">创建新测试</h1>
+    
+    <form method="post" class="bg-white shadow-md rounded px-8 pt-6 pb-8 mb-4">
+        {% csrf_token %}
+        
+        <div class="mb-6">
+            <h2 class="text-xl font-semibold mb-4">基本信息</h2>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div class="mb-4">
+                    <label class="block text-gray-700 text-sm font-bold mb-2" for="{{ form.title.id_for_label }}">
+                        测试标题
+                    </label>
+                    {{ form.title }}
+                    {% if form.title.errors %}
+                        <p class="text-red-500 text-xs italic">{{ form.title.errors.0 }}</p>
+                    {% endif %}
+                </div>
+                
+                <div class="mb-4">
+                    <label class="block text-gray-700 text-sm font-bold mb-2" for="{{ form.time_limit.id_for_label }}">
+                        时间限制（分钟）
+                    </label>
+                    {{ form.time_limit }}
+                    {% if form.time_limit.errors %}
+                        <p class="text-red-500 text-xs italic">{{ form.time_limit.errors.0 }}</p>
+                    {% endif %}
+                </div>
+                
+                <div class="mb-4">
+                    <label class="block text-gray-700 text-sm font-bold mb-2" for="{{ form.pass_score.id_for_label }}">
+                        通过分数
+                    </label>
+                    {{ form.pass_score }}
+                    {% if form.pass_score.errors %}
+                        <p class="text-red-500 text-xs italic">{{ form.pass_score.errors.0 }}</p>
+                    {% endif %}
+                </div>
+                
+                <div class="mb-4">
+                    <label class="block text-gray-700 text-sm font-bold mb-2" for="{{ form.is_random.id_for_label }}">
+                        是否随机出题
+                    </label>
+                    {{ form.is_random }}
+                    {% if form.is_random.errors %}
+                        <p class="text-red-500 text-xs italic">{{ form.is_random.errors.0 }}</p>
+                    {% endif %}
+                </div>
+            </div>
+            
+            <div class="mb-4">
+                <label class="block text-gray-700 text-sm font-bold mb-2" for="{{ form.description.id_for_label }}">
+                    测试描述
+                </label>
+                {{ form.description }}
+                {% if form.description.errors %}
+                    <p class="text-red-500 text-xs italic">{{ form.description.errors.0 }}</p>
+                {% endif %}
+            </div>
+        </div>
+        
+        <div id="randomConfig" class="mb-6 hidden">
+            <h2 class="text-xl font-semibold mb-4">随机出题配置</h2>
+            <div class="bg-gray-50 p-4 rounded border border-gray-200">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div class="mb-4">
+                        <label class="block text-gray-700 text-sm font-bold mb-2" for="{{ random_config_form.total_questions.id_for_label }}">
+                            题目总数
+                        </label>
+                        {{ random_config_form.total_questions }}
+                    </div>
+                    
+                    <div class="mb-4">
+                        <label class="block text-gray-700 text-sm font-bold mb-2" for="{{ random_config_form.categories.id_for_label }}">
+                            选择题目分类
+                        </label>
+                        {{ random_config_form.categories }}
+                    </div>
+                    
+                    <div class="mb-4">
+                        <label class="block text-gray-700 text-sm font-bold mb-2" for="{{ random_config_form.difficulty.id_for_label }}">
+                            难度级别
+                        </label>
+                        {{ random_config_form.difficulty }}
+                    </div>
+                    
+                    <div class="mb-4">
+                        <label class="block text-gray-700 text-sm font-bold mb-2" for="{{ random_config_form.question_types.id_for_label }}">
+                            题目类型
+                        </label>
+                        {{ random_config_form.question_types }}
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="mb-6">
+            <h2 class="text-xl font-semibold mb-4">分数段反馈配置</h2>
+            <div class="bg-gray-50 p-4 rounded border border-gray-200">
+                {{ feedback_formset.management_form }}
+                <div id="feedback-formset">
+                    {% for form in feedback_formset %}
+                        <div class="feedback-form mb-4 p-3 border border-gray-200 rounded">
+                            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                <div>
+                                    <label class="block text-gray-700 text-sm font-bold mb-2">
+                                        最低分数
+                                    </label>
+                                    {{ form.min_score }}
+                                </div>
+                                <div>
+                                    <label class="block text-gray-700 text-sm font-bold mb-2">
+                                        最高分数
+                                    </label>
+                                    {{ form.max_score }}
+                                </div>
+                                <div>
+                                    <label class="block text-gray-700 text-sm font-bold mb-2">
+                                        反馈信息
+                                    </label>
+                                    {{ form.feedback_text }}
+                                </div>
+                            </div>
+                            {% if forloop.counter > 1 %}
+                            <button type="button" class="remove-form bg-red-500 hover:bg-red-700 text-white font-bold py-1 px-2 rounded text-xs mt-2">
+                                删除
+                            </button>
+                            {% endif %}
+                        </div>
+                    {% endfor %}
+                </div>
+                <button type="button" id="add-feedback" class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-1 px-2 rounded text-sm mt-2">
+                    添加分数段
+                </button>
+            </div>
+        </div>
+        
+        <div class="flex items-center justify-between">
+            <button class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline" type="submit">
+                创建测试
+            </button>
+            <a href="{% url 'exam_list' %}" class="inline-block align-baseline font-bold text-sm text-blue-500 hover:text-blue-800">
+                返回列表
+            </a>
+        </div>
+    </form>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // 显示/隐藏随机出题配置
+    document.addEventListener('DOMContentLoaded', function() {
+        const isRandomCheckbox = document.getElementById('{{ form.is_random.id_for_label }}');
+        const randomConfigDiv = document.getElementById('randomConfig');
+        
+        function toggleRandomConfig() {
+            if (isRandomCheckbox.checked) {
+                randomConfigDiv.classList.remove('hidden');
+            } else {
+                randomConfigDiv.classList.add('hidden');
+            }
+        }
+        
+        isRandomCheckbox.addEventListener('change', toggleRandomConfig);
+        toggleRandomConfig(); // 初始化
+        
+        // 动态表单集处理
+        const addButton = document.getElementById('add-feedback');
+        const formsetContainer = document.getElementById('feedback-formset');
+        const totalFormsInput = document.querySelector('input[name="feedback_set-TOTAL_FORMS"]');
+        
+        addButton.addEventListener('click', function() {
+            const formCount = parseInt(totalFormsInput.value);
+            const newForm = formsetContainer.querySelector('.feedback-form').cloneNode(true);
+            
+            // 更新新表单中的索引
+            newForm.querySelectorAll('input, select, textarea').forEach(input => {
+                input.value = '';
+                input.name = input.name.replace(/\d+/, formCount);
+                input.id = input.id.replace(/\d+/, formCount);
+            });
+            
+            // 添加删除按钮
+            if (!newForm.querySelector('.remove-form')) {
+                const removeButton = document.createElement('button');
+                removeButton.type = 'button';
+                removeButton.className = 'remove-form bg-red-500 hover:bg-red-700 text-white font-bold py-1 px-2 rounded text-xs mt-2';
+                removeButton.textContent = '删除';
+                newForm.appendChild(removeButton);
+            }
+            
+            formsetContainer.appendChild(newForm);
+            totalFormsInput.value = formCount + 1;
+            
+            // 为新添加的删除按钮添加事件
+            attachRemoveListeners();
+        });
+        
+        function attachRemoveListeners() {
+            document.querySelectorAll('.remove-form').forEach(button => {
+                button.addEventListener('click', function() {
+                    this.closest('.feedback-form').remove();
+                    const formCount = parseInt(totalFormsInput.value);
+                    totalFormsInput.value = formCount - 1;
+                });
+            });
+        }
+        
+        attachRemoveListeners(); // 初始化
+    });
+</script>
+{% endblock %} 

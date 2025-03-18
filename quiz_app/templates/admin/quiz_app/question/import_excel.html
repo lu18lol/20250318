@@ -1,0 +1,127 @@
+{% extends "admin/base_site.html" %}
+{% load i18n static %}
+
+{% block content %}
+<div class="content-main">
+    <h1>导入题目</h1>
+    
+    <div style="margin: 20px 0;">
+        <a href="{% url 'admin:question-download-template' %}" class="button">
+            下载Excel模板
+        </a>
+    </div>
+
+    <form method="post" enctype="multipart/form-data">
+        {% csrf_token %}
+        
+        <div class="form-row">
+            <div>
+                <label for="excel_file">选择Excel文件：</label>
+                <input type="file" name="excel_file" id="excel_file" accept=".xlsx,.xls" required>
+            </div>
+        </div>
+        
+        {% if results %}
+        <div class="results" style="margin-top: 20px;">
+            <h2>导入结果</h2>
+            <p>成功导入: {{ results.success }} 条</p>
+            <p>导入失败: {{ results.failed }} 条</p>
+            
+            {% if results.errors %}
+            <div class="errors" style="margin-top: 10px;">
+                <h3>错误信息：</h3>
+                <ul>
+                    {% for error in results.errors %}
+                    <li style="color: #dc2626;">{{ error }}</li>
+                    {% endfor %}
+                </ul>
+            </div>
+            {% endif %}
+        </div>
+        {% endif %}
+        
+        <div class="submit-row" style="margin-top: 20px;">
+            <input type="submit" value="开始导入" class="default">
+            <a href="{% url 'admin:quiz_app_question_changelist' %}" class="button">返回列表</a>
+        </div>
+    </form>
+    
+    <div class="help" style="margin-top: 30px;">
+        <h2>使用说明</h2>
+        <ol>
+            <li>点击"下载Excel模板"获取标准导入模板</li>
+            <li>按照模板格式填写题目信息：
+                <ul>
+                    <li>题目类型：单选题、多选题、判断题、问答题</li>
+                    <li>难度：简单、中等、困难</li>
+                    <li>分类和标签：多个值用逗号分隔</li>
+                    <li>选项：单选和多选题必填，判断题和问答题可不填</li>
+                    <li>正确答案：
+                        <ul>
+                            <li>单选题：填写选项字母（如：A）</li>
+                            <li>多选题：填写选项字母，用逗号分隔（如：A,B,D）</li>
+                            <li>判断题：填写"是"或"否"</li>
+                            <li>问答题：可不填</li>
+                        </ul>
+                    </li>
+                </ul>
+            </li>
+            <li>选择填写好的Excel文件并点击"开始导入"</li>
+            <li>导入完成后会显示导入结果，如有错误会列出具体原因</li>
+        </ol>
+    </div>
+</div>
+
+<style>
+    .content-main {
+        max-width: 800px;
+        margin: 0 auto;
+        padding: 20px;
+    }
+    
+    .help {
+        background-color: #f8fafc;
+        padding: 20px;
+        border-radius: 4px;
+    }
+    
+    .help h2 {
+        color: #1e293b;
+        margin-bottom: 15px;
+    }
+    
+    .help ol {
+        margin-left: 20px;
+    }
+    
+    .help ul {
+        margin-left: 20px;
+        margin-top: 5px;
+    }
+    
+    .help li {
+        margin-bottom: 10px;
+    }
+    
+    .help ul li {
+        margin-bottom: 5px;
+    }
+    
+    .form-row {
+        margin-bottom: 20px;
+    }
+    
+    .button {
+        background: #f3f4f6;
+        padding: 8px 15px;
+        border-radius: 4px;
+        text-decoration: none;
+        color: #374151;
+        border: 1px solid #d1d5db;
+    }
+    
+    .button:hover {
+        background: #e5e7eb;
+    }
+</style>
+{% endblock %} 

@@ -1,0 +1,165 @@
+{% extends "base.html" %}
+
+{% block title %}题库管理{% endblock %}
+
+{% block content %}
+<div class="container mx-auto px-4 py-8">
+    <div class="flex justify-between items-center mb-6">
+        <h1 class="text-3xl font-bold">题库管理</h1>
+        <div class="flex space-x-3">
+            <a href="{% url 'question_create' %}" class="bg-blue-600 hover:bg-blue-700 text-white py-2 px-4 rounded">
+                添加题目
+            </a>
+            <a href="{% url 'import_questions' %}" class="bg-green-600 hover:bg-green-700 text-white py-2 px-4 rounded">
+                批量导入
+            </a>
+        </div>
+    </div>
+    
+    <div class="grid grid-cols-1 md:grid-cols-4 gap-6">
+        <!-- 左侧过滤器 -->
+        <div class="md:col-span-1 bg-white rounded-lg shadow p-4">
+            <h2 class="text-xl font-semibold mb-4">筛选</h2>
+            
+            <form method="get" action="{% url 'question_list' %}">
+                <div class="mb-4">
+                    <label class="block text-gray-700 mb-2">题目分类</label>
+                    <select name="category" class="w-full px-3 py-2 border rounded">
+                        <option value="">全部分类</option>
+                        {% for category in categories %}
+                        <option value="{{ category.id }}" {% if request.GET.category == category.id|stringformat:"s" %}selected{% endif %}>
+                            {{ category.name }}
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+                
+                <div class="mb-4">
+                    <label class="block text-gray-700 mb-2">题目类型</label>
+                    <select name="type" class="w-full px-3 py-2 border rounded">
+                        <option value="">全部类型</option>
+                        <option value="single" {% if request.GET.type == 'single' %}selected{% endif %}>单选题</option>
+                        <option value="multiple" {% if request.GET.type == 'multiple' %}selected{% endif %}>多选题</option>
+                        <option value="truefalse" {% if request.GET.type == 'truefalse' %}selected{% endif %}>判断题</option>
+                        <option value="essay" {% if request.GET.type == 'essay' %}selected{% endif %}>问答题</option>
+                    </select>
+                </div>
+                
+                <div class="mb-4">
+                    <label class="block text-gray-700 mb-2">难度</label>
+                    <select name="difficulty" class="w-full px-3 py-2 border rounded">
+                        <option value="">全部难度</option>
+                        <option value="easy" {% if request.GET.difficulty == 'easy' %}selected{% endif %}>简单</option>
+                        <option value="medium" {% if request.GET.difficulty == 'medium' %}selected{% endif %}>中等</option>
+                        <option value="hard" {% if request.GET.difficulty == 'hard' %}selected{% endif %}>困难</option>
+                    </select>
+                </div>
+                
+                <div class="mb-4">
+                    <label class="block text-gray-700 mb-2">搜索</label>
+                    <input type="text" name="search" value="{{ request.GET.search|default:'' }}" class="w-full px-3 py-2 border rounded" placeholder="搜索题目内容...">
+                </div>
+                
+                <button type="submit" class="w-full bg-blue-500 hover:bg-blue-600 text-white py-2 px-4 rounded">
+                    应用筛选
+                </button>
+            </form>
+        </div>
+        
+        <!-- 右侧题目列表 -->
+        <div class="md:col-span-3">
+            {% if questions %}
+                <div class="bg-white rounded-lg shadow">
+                    <div class="p-4 border-b">
+                        <h2 class="text-xl font-semibold">题目列表 ({{ questions.count }})</h2>
+                    </div>
+                    
+                    <ul class="divide-y">
+                        {% for question in questions %}
+                        <li class="p-4 hover:bg-gray-50">
+                            <div class="flex justify-between items-start">
+                                <div class="flex-1">
+                                    <div class="flex items-center mb-2">
+                                        <span class="px-2 py-1 text-xs rounded {% if question.type == 'single' %}bg-blue-100 text-blue-800{% elif question.type == 'multiple' %}bg-green-100 text-green-800{% elif question.type == 'truefalse' %}bg-yellow-100 text-yellow-800{% else %}bg-purple-100 text-purple-800{% endif %}">
+                                            {{ question.get_type_display }}
+                                        </span>
+                                        
+                                        <span class="ml-2 px-2 py-1 text-xs rounded {% if question.difficulty == 'easy' %}bg-green-100 text-green-800{% elif question.difficulty == 'medium' %}bg-yellow-100 text-yellow-800{% else %}bg-red-100 text-red-800{% endif %}">
+                                            {{ question.get_difficulty_display }}
+                                        </span>
+                                        
+                                        {% for category in question.categories.all %}
+                                        <span class="ml-2 px-2 py-1 text-xs bg-gray-100 text-gray-800 rounded">
+                                            {{ category.name }}
+                                        </span>
+                                        {% endfor %}
+                                    </div>
+                                    
+                                    <h3 class="text-lg font-medium mb-2">{{ question.content }}</h3>
+                                    
+                                    {% if question.type == 'single' or question.type == 'multiple' %}
+                                        <div class="ml-4 mb-2">
+                                            <ul class="list-disc ml-5">
+                                                {% for option in question.options.all %}
+                                                <li class="{% if option.is_correct %}text-green-600 font-medium{% endif %}">
+                                                    {{ option.content }} {% if option.is_correct %}(正确){% endif %}
+                                                </li>
+                                                {% endfor %}
+                                            </ul>
+                                        </div>
+                                    {% elif question.type == 'truefalse' %}
+                                        <div class="ml-4 mb-2">
+                                            <p>正确答案: 
+                                                <span class="font-medium">
+                                                    {% if question.options.filter.is_correct %}是{% else %}否{% endif %}
+                                                </span>
+                                            </p>
+                                        </div>
+                                    {% endif %}
+                                    
+                                    {% if question.explanation %}
+                                    <div class="mt-2 p-3 bg-gray-50 rounded-lg">
+                                        <p class="text-sm font-medium text-gray-700">解析:</p>
+                                        <p class="text-sm text-gray-600">{{ question.explanation }}</p>
+                                    </div>
+                                    {% endif %}
+                                </div>
+                                
+                                <div class="ml-4 flex space-x-2">
+                                    <a href="#" class="text-blue-500 hover:text-blue-700">
+                                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                                            <path d="M13.586 3.586a2 2 0 112.828 2.828l-.793.793-2.828-2.828.793-.793zM11.379 5.793L3 14.172V17h2.828l8.38-8.379-2.83-2.828z" />
+                                        </svg>
+                                    </a>
+                                    <a href="#" class="text-red-500 hover:text-red-700">
+                                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                                            <path fill-rule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clip-rule="evenodd" />
+                                        </svg>
+                                    </a>
+                                </div>
+                            </div>
+                        </li>
+                        {% endfor %}
+                    </ul>
+                </div>
+            {% else %}
+                <div class="bg-white rounded-lg shadow p-8 text-center">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-16 w-16 mx-auto text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                    </svg>
+                    <h3 class="mt-4 text-xl font-medium text-gray-900">暂无题目</h3>
+                    <p class="mt-2 text-gray-500">您可以添加新题目或批量导入题目。</p>
+                    <div class="mt-6 flex justify-center space-x-4">
+                        <a href="{% url 'question_create' %}" class="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700">
+                            添加题目
+                        </a>
+                        <a href="{% url 'import_questions' %}" class="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-green-600 hover:bg-green-700">
+                            批量导入
+                        </a>
+                    </div>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %} 
